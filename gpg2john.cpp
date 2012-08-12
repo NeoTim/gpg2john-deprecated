@@ -74,6 +74,7 @@ int main(int argc, char **argv)
 	}
 	Tester *t = new Tester(key, NULL);
 	t->init();
+// #define DEBUG
 #ifdef DEBUG
 	char passphrase[N];
 	int l;
@@ -102,9 +103,15 @@ int main(int argc, char **argv)
 		l = strlen(passphrase);
 		passphrase[l-1] = 0;
  		Memblock *b = new Memblock(passphrase);
-		if(t->check(*b)) {
-			printf("Password Found : %s\n", passphrase);
-			exit(0);
+		try {
+			if(t->check(*b)) {
+				printf("Password Found : %s\n", passphrase);
+				exit(0);
+			}
+		} catch(const std::string & str) {
+		std::cerr << "Exception while parsing key: " << str << std::
+		    endl;
+		return EXIT_FAILURE;
 		}
 	}
 #endif

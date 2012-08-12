@@ -27,6 +27,7 @@
 #include <iostream>
 
 #include <openssl/md5.h>
+#include <openssl/sha.h>
 
 #include "memblock.h"
 #include "packetheader.h"
@@ -207,6 +208,61 @@ class S2KItSaltedSHA1Generator : public S2KItSaltedGenerator
 	private:
 		mutable uint8_t *m_keybuf;
 };
+
+class S2KItSaltedSHA512Generator : public S2KItSaltedGenerator
+{
+	public:
+		S2KItSaltedSHA512Generator(const uint8_t salt[8], uint32_t count)
+			: S2KItSaltedGenerator(salt, count)
+		{
+			m_keybuf = new uint8_t[KEYBUFFER_LENGTH];
+			memcpy(m_keybuf, m_salt, 8);
+		}
+		~S2KItSaltedSHA512Generator() { delete[] m_keybuf; }
+
+		void genkey(const Memblock &string, uint8_t *key, uint32_t length) const
+		{
+			SHA512_CTX ctx;
+			uint32_t numHashes = (length + SHA512_DIGEST_LENGTH - 1) / SHA512_DIGEST_LENGTH;
+
+			// TODO: This is not very efficient with multiple hashes
+			for (uint32_t i = 0; i < numHashes; i++) {
+				SHA512_Init(&ctx);
+				for (uint32_t j = 0; j < i; j++) {
+					SHA512_Update(&ctx, "\0", 1);
+				}
+
+				// Find multiplicator
+				int32_t tl = string.length + 8;
+				int32_t mul = 1;
+				while (mul < tl && ((64 * mul) % tl)) {
+					++mul;
+				}
+
+				// Try to feed the hash function with 64-byte blocks
+				const int32_t bs = mul * 64;
+				assert(bs <= KEYBUFFER_LENGTH);
+				uint8_t *bptr = m_keybuf + tl;
+				int32_t n = bs / tl;
+				memcpy(m_keybuf + 8, string.data, string.length);
+				while (n-- > 1) {
+					memcpy(bptr, m_keybuf, tl);
+					bptr += tl;
+				}
+				n = m_count / bs;
+				while (n-- > 0) {
+					SHA512_Update(&ctx, m_keybuf, bs);
+				}
+				SHA512_Update(&ctx, m_keybuf, m_count % bs);
+
+				SHA512_Final(key + (i * SHA_DIGEST_LENGTH), &ctx);
+			}
+		}
+
+	private:
+		mutable uint8_t *m_keybuf;
+};
+
 
 class S2KItSaltedMD5Generator : public S2KItSaltedGenerator
 {
@@ -408,6 +464,8 @@ void String2Key::setupGenerator() const
 					break;
 				case CryptUtils::HASH_SHA1:
 					m_keygen = new S2KItSaltedSHA1Generator(m_salt, m_count);
+				case CryptUtils::HASH_SHA512:
+					m_keygen = new S2KItSaltedSHA512Generator(m_salt, m_count);
 					break;
 				default: break;
 			}

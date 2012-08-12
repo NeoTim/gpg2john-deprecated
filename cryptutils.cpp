@@ -25,9 +25,10 @@
 #include <openssl/aes.h>
 #include <openssl/blowfish.h>
 #include <openssl/cast.h>
+#include <cstdio>
+#include <cstdlib>
 
 #include "cryptutils.h"
-
 
 namespace CryptUtils
 {
@@ -80,8 +81,10 @@ uint32_t digestSize(HashAlgorithm algorithm)
 			return 16;
 		case HASH_SHA1:
 			return 20;
-
-		default: break;
+		case HASH_SHA512:
+			return 64;
+		default: fprintf(stderr, "hash algorithm (%d) is not supported!\n", algorithm);
+			 exit(-1);
 	}
 
 	return 0;

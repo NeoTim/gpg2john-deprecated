@@ -64,7 +64,12 @@ typedef enum {
 typedef enum {
 	HASH_UNKOWN = -1,
 	HASH_MD5 = 1,
-	HASH_SHA1 = 2
+	HASH_SHA1 = 2,
+	HASH_RIPEMD160 = 3,
+	HASH_SHA256 = 8,
+	HASH_SHA384 = 9,
+	HASH_SHA512 = 10,
+	HASH_SHA224 = 11
 } HashAlgorithm;
 
 
