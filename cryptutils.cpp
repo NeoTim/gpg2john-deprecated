@@ -83,6 +83,10 @@ uint32_t digestSize(HashAlgorithm algorithm)
 			return 20;
 		case HASH_SHA512:
 			return 64;
+		case HASH_SHA256:
+			return 32;
+		case HASH_RIPEMD160:
+			return 20;
 		default: fprintf(stderr, "hash algorithm (%d) is not supported!\n", algorithm);
 			 exit(-1);
 	}

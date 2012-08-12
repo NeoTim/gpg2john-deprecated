@@ -74,7 +74,7 @@ int main(int argc, char **argv)
 	}
 	Tester *t = new Tester(key, NULL);
 	t->init();
-// #define DEBUG
+#define DEBUG
 #ifdef DEBUG
 	char passphrase[N];
 	int l;

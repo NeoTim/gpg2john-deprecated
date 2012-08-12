@@ -28,6 +28,7 @@
 
 #include <openssl/md5.h>
 #include <openssl/sha.h>
+#include <openssl/ripemd.h>
 
 #include "memblock.h"
 #include "packetheader.h"
@@ -263,6 +264,114 @@ class S2KItSaltedSHA512Generator : public S2KItSaltedGenerator
 		mutable uint8_t *m_keybuf;
 };
 
+class S2KItSaltedSHA256Generator : public S2KItSaltedGenerator
+{
+	public:
+		S2KItSaltedSHA256Generator(const uint8_t salt[8], uint32_t count)
+			: S2KItSaltedGenerator(salt, count)
+		{
+			m_keybuf = new uint8_t[KEYBUFFER_LENGTH];
+			memcpy(m_keybuf, m_salt, 8);
+		}
+		~S2KItSaltedSHA256Generator() { delete[] m_keybuf; }
+
+		void genkey(const Memblock &string, uint8_t *key, uint32_t length) const
+		{
+			SHA256_CTX ctx;
+			uint32_t numHashes = (length + SHA256_DIGEST_LENGTH - 1) / SHA256_DIGEST_LENGTH;
+
+			// TODO: This is not very efficient with multiple hashes
+			for (uint32_t i = 0; i < numHashes; i++) {
+				SHA256_Init(&ctx);
+				for (uint32_t j = 0; j < i; j++) {
+					SHA256_Update(&ctx, "\0", 1);
+				}
+
+				// Find multiplicator
+				int32_t tl = string.length + 8;
+				int32_t mul = 1;
+				while (mul < tl && ((64 * mul) % tl)) {
+					++mul;
+				}
+
+				// Try to feed the hash function with 64-byte blocks
+				const int32_t bs = mul * 64;
+				assert(bs <= KEYBUFFER_LENGTH);
+				uint8_t *bptr = m_keybuf + tl;
+				int32_t n = bs / tl;
+				memcpy(m_keybuf + 8, string.data, string.length);
+				while (n-- > 1) {
+					memcpy(bptr, m_keybuf, tl);
+					bptr += tl;
+				}
+				n = m_count / bs;
+				while (n-- > 0) {
+					SHA256_Update(&ctx, m_keybuf, bs);
+				}
+				SHA256_Update(&ctx, m_keybuf, m_count % bs);
+
+				SHA256_Final(key + (i * SHA_DIGEST_LENGTH), &ctx);
+			}
+		}
+
+	private:
+		mutable uint8_t *m_keybuf;
+};
+
+class S2KItSaltedRIPEMD160Generator : public S2KItSaltedGenerator
+{
+	public:
+		S2KItSaltedRIPEMD160Generator(const uint8_t salt[8], uint32_t count)
+			: S2KItSaltedGenerator(salt, count)
+		{
+			m_keybuf = new uint8_t[KEYBUFFER_LENGTH];
+			memcpy(m_keybuf, m_salt, 8);
+		}
+		~S2KItSaltedRIPEMD160Generator() { delete[] m_keybuf; }
+
+		void genkey(const Memblock &string, uint8_t *key, uint32_t length) const
+		{
+			RIPEMD160_CTX ctx;
+			uint32_t numHashes = (length + RIPEMD160_DIGEST_LENGTH - 1) / RIPEMD160_DIGEST_LENGTH;
+
+			// TODO: This is not very efficient with multiple hashes
+			for (uint32_t i = 0; i < numHashes; i++) {
+				RIPEMD160_Init(&ctx);
+				for (uint32_t j = 0; j < i; j++) {
+					RIPEMD160_Update(&ctx, "\0", 1);
+				}
+
+				// Find multiplicator
+				int32_t tl = string.length + 8;
+				int32_t mul = 1;
+				while (mul < tl && ((64 * mul) % tl)) {
+					++mul;
+				}
+
+				// Try to feed the hash function with 64-byte blocks
+				const int32_t bs = mul * 64;
+				assert(bs <= KEYBUFFER_LENGTH);
+				uint8_t *bptr = m_keybuf + tl;
+				int32_t n = bs / tl;
+				memcpy(m_keybuf + 8, string.data, string.length);
+				while (n-- > 1) {
+					memcpy(bptr, m_keybuf, tl);
+					bptr += tl;
+				}
+				n = m_count / bs;
+				while (n-- > 0) {
+					RIPEMD160_Update(&ctx, m_keybuf, bs);
+				}
+				RIPEMD160_Update(&ctx, m_keybuf, m_count % bs);
+				RIPEMD160_Final(key + (i * SHA_DIGEST_LENGTH), &ctx);
+			}
+		}
+	private:
+		mutable uint8_t *m_keybuf;
+};
+
+
+
 
 class S2KItSaltedMD5Generator : public S2KItSaltedGenerator
 {
@@ -464,9 +573,17 @@ void String2Key::setupGenerator() const
 					break;
 				case CryptUtils::HASH_SHA1:
 					m_keygen = new S2KItSaltedSHA1Generator(m_salt, m_count);
+					break;
 				case CryptUtils::HASH_SHA512:
 					m_keygen = new S2KItSaltedSHA512Generator(m_salt, m_count);
 					break;
+				case CryptUtils::HASH_SHA256:
+					m_keygen = new S2KItSaltedSHA256Generator(m_salt, m_count);
+					break;
+				case CryptUtils::HASH_RIPEMD160:
+					m_keygen = new S2KItSaltedRIPEMD160Generator(m_salt, m_count);
+					break;
+
 				default: break;
 			}
 		}
