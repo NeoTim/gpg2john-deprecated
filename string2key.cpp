@@ -256,7 +256,7 @@ class S2KItSaltedSHA512Generator : public S2KItSaltedGenerator
 				}
 				SHA512_Update(&ctx, m_keybuf, m_count % bs);
 
-				SHA512_Final(key + (i * SHA_DIGEST_LENGTH), &ctx);
+				SHA512_Final(key + (i * SHA512_DIGEST_LENGTH), &ctx);
 			}
 		}
 
@@ -310,7 +310,7 @@ class S2KItSaltedSHA256Generator : public S2KItSaltedGenerator
 				}
 				SHA256_Update(&ctx, m_keybuf, m_count % bs);
 
-				SHA256_Final(key + (i * SHA_DIGEST_LENGTH), &ctx);
+				SHA256_Final(key + (i * SHA256_DIGEST_LENGTH), &ctx);
 			}
 		}
 
@@ -363,7 +363,7 @@ class S2KItSaltedRIPEMD160Generator : public S2KItSaltedGenerator
 					RIPEMD160_Update(&ctx, m_keybuf, bs);
 				}
 				RIPEMD160_Update(&ctx, m_keybuf, m_count % bs);
-				RIPEMD160_Final(key + (i * SHA_DIGEST_LENGTH), &ctx);
+				RIPEMD160_Final(key + (i * RIPEMD160_DIGEST_LENGTH), &ctx);
 			}
 		}
 	private:
